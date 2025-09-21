@@ -27,9 +27,11 @@ const KickedOutPage = () => {
           </p>
         </div>
 
-        <button className="btn try-again-btn" onClick={handleTryAgain}>
-          Try Again
-        </button>
+        <div className="d-flex justify-content-center">
+          <button className="btn try-again-btn" onClick={handleTryAgain}>
+            Try Again
+          </button>
+        </div>
       </div>
     </div>
   );

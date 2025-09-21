@@ -61,7 +61,9 @@ const ChatPopover = () => {
             </tr>
           </thead>
           <tbody>
-            {participants.map((participant, index) => (
+            {participants
+              .filter(participant => !participant.startsWith("teacher"))
+              .map((participant, index) => (
               <tr key={index}>
                 <td>{participant}</td>
                 {username.startsWith("teacher") ? (
