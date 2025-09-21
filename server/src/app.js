@@ -39,13 +39,17 @@ const io = new Server(server, {
 
 let votes = {};
 let connectedUsers = {};
+let joinedUsers = new Set(); // Track users who have already joined
 
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
   socket.on("createPoll", async (pollData) => {
+    console.log("Teacher creating poll:", pollData);
+    console.log("Connected users:", connectedUsers);
     votes = {};
     const poll = await createPoll(pollData);
+    console.log("Poll created and broadcasting to all clients:", poll);
     io.emit("pollCreated", poll);
   });
 
@@ -78,11 +82,21 @@ io.on("connection", (socket) => {
   });
 
   socket.on("joinChat", ({ username }) => {
-    connectedUsers[socket.id] = username;
-    io.emit("participantsUpdate", Object.values(connectedUsers));
+    // Prevent duplicate joins for the same socket
+    if (!joinedUsers.has(socket.id)) {
+      console.log("User joining chat:", username, "with socket id:", socket.id);
+      connectedUsers[socket.id] = username;
+      joinedUsers.add(socket.id);
+      console.log("Updated connected users:", connectedUsers);
+      io.emit("participantsUpdate", Object.values(connectedUsers));
+    } else {
+      console.log("User already joined:", username, "socket id:", socket.id);
+    }
 
     socket.on("disconnect", () => {
+      console.log("User disconnecting:", username, "socket id:", socket.id);
       delete connectedUsers[socket.id];
+      joinedUsers.delete(socket.id);
       io.emit("participantsUpdate", Object.values(connectedUsers));
     });
   });

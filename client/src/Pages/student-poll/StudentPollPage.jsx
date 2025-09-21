@@ -60,8 +60,14 @@ const StudentPollPage = () => {
 
   useEffect(() => {
     const socket = socketService.connect();
+    const username = sessionStorage.getItem("username");
     
-    socket.on("pollCreated", (pollData) => {
+    console.log("Student poll page mounted, username:", username);
+    console.log("Socket connected:", socket.connected);
+    
+    // Set up event listeners immediately
+    const handlePollCreated = (pollData) => {
+      console.log("Student received poll:", pollData);
       setPollQuestion(pollData.question);
       setPollOptions(pollData.options);
       setVotes({});
@@ -69,13 +75,26 @@ const StudentPollPage = () => {
       setSelectedOption(null);
       setTimeLeft(pollData.timer);
       setPollId(pollData._id);
-    });
+    };
 
-    socket.on("pollResults", (updatedVotes) => {
+    const handlePollResults = (updatedVotes) => {
+      console.log("Student received poll results:", updatedVotes);
       setVotes(updatedVotes);
-    });
+    };
+
+    // Add event listeners
+    socket.on("pollCreated", handlePollCreated);
+    socket.on("pollResults", handlePollResults);
+    
+    // Join the chat/participants list immediately when student arrives
+    if (username) {
+      console.log("Emitting joinChat for student:", username);
+      socketService.emit("joinChat", { username });
+    }
 
     return () => {
+      socket.off("pollCreated", handlePollCreated);
+      socket.off("pollResults", handlePollResults);
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }

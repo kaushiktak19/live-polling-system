@@ -13,21 +13,38 @@ const TeacherPollPage = () => {
   const navigate = new useNavigate();
   useEffect(() => {
     const socket = socketService.connect();
+    const username = sessionStorage.getItem("username");
     
-    socket.on("pollCreated", (pollData) => {
+    console.log("Teacher poll page mounted, username:", username);
+    console.log("Socket connected:", socket.connected);
+    
+    // Set up event listeners immediately
+    const handlePollCreated = (pollData) => {
+      console.log("Teacher received poll:", pollData);
       setPollQuestion(pollData.question);
       setPollOptions(pollData.options);
       setVotes({});
-    });
+    };
 
-    socket.on("pollResults", (updatedVotes) => {
+    const handlePollResults = (updatedVotes) => {
+      console.log("Teacher received poll results:", updatedVotes);
       setVotes(updatedVotes);
       setTotalVotes(Object.values(updatedVotes).reduce((a, b) => a + b, 0));
-    });
+    };
+
+    // Add event listeners
+    socket.on("pollCreated", handlePollCreated);
+    socket.on("pollResults", handlePollResults);
+    
+    // Join the chat/participants list immediately when teacher arrives
+    if (username) {
+      console.log("Emitting joinChat for teacher:", username);
+      socketService.emit("joinChat", { username });
+    }
 
     return () => {
-      socket.off("pollCreated");
-      socket.off("pollResults");
+      socket.off("pollCreated", handlePollCreated);
+      socket.off("pollResults", handlePollResults);
     };
   }, []);
 

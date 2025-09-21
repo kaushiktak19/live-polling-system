@@ -1,9 +1,11 @@
 const Poll = require("../models/pollModel");
 
 exports.createPoll = async (pollData) => {
+  console.log("Creating poll with data:", pollData);
   let newPoll = await Poll(pollData);
-  newPoll.save();
-  return newPoll;
+  const savedPoll = await newPoll.save();
+  console.log("Poll saved to database:", savedPoll);
+  return savedPoll;
 };
 
 exports.voteOnOption = async (pollId, optionText) => {
@@ -22,7 +24,9 @@ exports.voteOnOption = async (pollId, optionText) => {
 
 exports.getPolls = async (req, res) => {
   let { teacherUsername } = req.params;
+  console.log("Fetching polls for teacher:", teacherUsername);
   let data = await Poll.find({ teacherUsername });
+  console.log("Found polls:", data);
   res.status(200).json({
     data,
   });

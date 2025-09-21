@@ -71,7 +71,13 @@ const TeacherLandingPage = () => {
     if (validateForm()) {
       let teacherUsername = sessionStorage.getItem("username");
       let pollData = { question, options, timer, teacherUsername };
-      socketService.emit("createPoll", pollData);
+      
+      // Add a small delay to ensure all clients are connected
+      setTimeout(() => {
+        console.log("Emitting createPoll with data:", pollData);
+        socketService.emit("createPoll", pollData);
+      }, 100);
+      
       navigate("/teacher-poll");
     }
   };

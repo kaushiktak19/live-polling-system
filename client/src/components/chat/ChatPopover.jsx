@@ -18,8 +18,9 @@ const ChatPopover = () => {
     const socket = socketService.connect();
     const username = sessionStorage.getItem("username");
     
-    socket.emit("joinChat", { username });
-
+    // Only join chat if not already joined (avoid duplicates)
+    // The joinChat will be handled by the main pages now
+    
     socket.on("chatMessage", (message) => {
       setMessages((prevMessages) => [...prevMessages, message]);
     });
