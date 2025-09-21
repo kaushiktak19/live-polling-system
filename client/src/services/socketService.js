@@ -1,9 +1,5 @@
 import { io } from "socket.io-client";
-
-let apiUrl =
-  import.meta.env.VITE_NODE_ENV === "production"
-    ? import.meta.env.VITE_API_BASE_URL
-    : "http://localhost:3000";
+import { API_URL } from "../config/api.js";
 
 class SocketService {
   constructor() {
@@ -12,7 +8,7 @@ class SocketService {
 
   connect() {
     if (!this.socket) {
-      this.socket = io(apiUrl, {
+      this.socket = io(API_URL, {
         autoConnect: true,
         reconnection: true,
         reconnectionDelay: 1000,

@@ -3,7 +3,7 @@ import stars from "../../assets/spark.svg";
 import "./LoginPage.css";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-let apiUrl = import.meta.env.VITE_NODE_ENV = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
+import { API_URL } from "../../config/api.js";
 
 const LoginPage = () => {
   const [selectedRole, setSelectedRole] = useState(null);
@@ -14,7 +14,7 @@ const LoginPage = () => {
 
   const continueToPoll = async () => {
     if (selectedRole === "teacher") {
-      let teacherlogin = await axios.post(`${apiUrl}/teacher-login`);
+      let teacherlogin = await axios.post(`${API_URL}/teacher-login`);
       sessionStorage.setItem("username", teacherlogin.data.username);
       navigate("/teacher-home-page");
     } else if (selectedRole === "student") {

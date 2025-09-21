@@ -39,7 +39,7 @@ const io = new Server(server, {
 
 let votes = {};
 let connectedUsers = {};
-let joinedUsers = new Set(); // Track users who have already joined
+let joinedUsers = new Set(); 
 
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
@@ -61,19 +61,15 @@ io.on("connection", (socket) => {
       if (connectedUsers[id] === userToKick) {
         console.log("Found user to kick:", userToKick, "with socket id:", id);
         
-        // Send kickout message to the specific user
         io.to(id).emit("kickedOut", { message: "You have been kicked out." });
         
-        // Disconnect the user
         const userSocket = io.sockets.sockets.get(id);
         if (userSocket) {
           userSocket.disconnect(true);
         }
         
-        // Remove from connected users
         delete connectedUsers[id];
         
-        // Update participants list for remaining users
         io.emit("participantsUpdate", Object.values(connectedUsers));
         console.log("User kicked out successfully");
         break;
@@ -82,7 +78,6 @@ io.on("connection", (socket) => {
   });
 
   socket.on("joinChat", ({ username }) => {
-    // Prevent duplicate joins for the same socket
     if (!joinedUsers.has(socket.id)) {
       console.log("User joining chat:", username, "with socket id:", socket.id);
       connectedUsers[socket.id] = username;
@@ -121,7 +116,7 @@ io.on("connection", (socket) => {
 });
 
 app.get("/", (req, res) => {
-  res.send("Polling System Backend");
+  res.send("Live Polling System Backend");
 });
 
 app.post("/teacher-login", (req, res) => {
