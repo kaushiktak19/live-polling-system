@@ -1,0 +1,87 @@
+.kicked-out-container {
+  max-width: 981px;
+  width: 100%;
+  padding: 0 20px;
+}
+
+.kicked-out-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0;
+  gap: 26px;
+  width: 737px;
+  height: 103px;
+  margin: 0 auto;
+}
+
+.kicked-out-title {
+  width: 737px;
+  height: 50px;
+  font-family: 'Sora', sans-serif;
+  font-style: normal;
+  font-weight: 400;
+  font-size: 40px;
+  line-height: 50px;
+  text-align: center;
+  color: #000000;
+  margin: 0;
+}
+
+.kicked-out-message {
+  width: 737px;
+  height: 48px;
+  font-family: 'Sora', sans-serif;
+  font-style: normal;
+  font-weight: 400;
+  font-size: 19px;
+  line-height: 24px;
+  text-align: center;
+  color: rgba(0, 0, 0, 0.5);
+  margin: 0;
+}
+
+.try-again-btn {
+  position: relative;
+  width: 134px;
+  height: 31px;
+  background: linear-gradient(90deg, #7565D9 0%, #4D0ACD 100%);
+  border-radius: 24px;
+  border: none;
+  color: white;
+  font-family: 'Sora', sans-serif;
+  font-style: normal;
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin-top: 20px;
+}
+
+.try-again-btn:hover {
+  background: linear-gradient(90deg, #6a5bc7 0%, #4509b8 100%);
+  color: white;
+}
+
+.intervue-btn {
+  background: linear-gradient(90deg, #7565D9 0%, #4D0ACD 100%);
+  border-radius: 24px;
+  border: none;
+  color: white;
+  font-family: 'Sora', sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 18px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 9px;
+}
+
+.intervue-btn img {
+  width: 14.66px;
+  height: 14.65px;
+}
