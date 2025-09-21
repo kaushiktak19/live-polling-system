@@ -5,62 +5,39 @@ const http = require("http");
 require("dotenv").config();
 const { Server } = require("socket.io");
 const { TeacherLogin } = require("./controllers/login");
-const {
-  createPoll,
-  voteOnOption,
-  getPolls,
-} = require("../src/controllers/poll");
+const { createPoll, voteOnOption, getPolls } = require("../src/controllers/poll");
 
 const app = express();
 
-// CORS configuration
-const corsOptions = {
-  origin: function (origin, callback) {
+const FRONTEND_URL = process.env.FRONTEND_URL;
 
-    if (!origin) return callback(null, true);
-    
-    const allowedOrigins = [
-      'http://localhost:5173',
-      'http://localhost:3000', 
-      'https://live-polling-system-kohl.vercel.app', 
-    ];
-    
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      console.log('CORS blocked origin:', origin);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+app.use(cors({
+  origin: FRONTEND_URL,
+  methods: ["GET", "POST"],
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-};
+}));
 
-app.use(cors(corsOptions));
 app.use(express.json());
-
-const port = process.env.PORT || 3000;
 
 const DB = process.env.MONGODB_URL;
 
-mongoose
-  .connect(DB)
-  .then(() => {
-    console.log("Connected to MongoDB");
-  })
-  .catch((e) => {
-    console.error("Failed to connect to MongoDB:", e);
+mongoose.set("strictQuery", true);
+
+mongoose.connect(DB, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
+  .then(() => console.log("Connected to MongoDB"))
+  .catch((err) => {
+    console.error("Failed to connect to MongoDB:", err);
+    process.exit(1);
   });
 
+const port = process.env.PORT || 3000;
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: [
-      'http://localhost:5173', 
-      'http://localhost:3000', 
-      'https://live-polling-system-kohl.vercel.app', 
-    ],
+    origin: FRONTEND_URL,
     methods: ["GET", "POST"],
     credentials: true,
   },
@@ -68,94 +45,75 @@ const io = new Server(server, {
 
 let votes = {};
 let connectedUsers = {};
-let joinedUsers = new Set(); 
+let joinedUsers = new Set();
 
 io.on("connection", (socket) => {
-  console.log("User connected:", socket.id);
-
   socket.on("createPoll", async (pollData) => {
-    console.log("Teacher creating poll:", pollData);
-    console.log("Connected users:", connectedUsers);
     votes = {};
-    const poll = await createPoll(pollData);
-    console.log("Poll created and broadcasting to all clients:", poll);
-    io.emit("pollCreated", poll);
+    try {
+      const poll = await createPoll(pollData);
+      io.emit("pollCreated", poll);
+    } catch (err) {
+      socket.emit("error", { message: "Failed to create poll" });
+    }
   });
 
-  socket.on("kickOut", (userToKick) => {
-    console.log("Attempting to kick out user:", userToKick);
-    console.log("Current connected users:", connectedUsers);
-    
-    for (let id in connectedUsers) {
-      if (connectedUsers[id] === userToKick) {
-        console.log("Found user to kick:", userToKick, "with socket id:", id);
-        
-        io.to(id).emit("kickedOut", { message: "You have been kicked out." });
-        
-        const userSocket = io.sockets.sockets.get(id);
-        if (userSocket) {
-          userSocket.disconnect(true);
-        }
-        
-        delete connectedUsers[id];
-        
-        io.emit("participantsUpdate", Object.values(connectedUsers));
-        console.log("User kicked out successfully");
-        break;
-      }
-    }
+  socket.on("submitAnswer", async (answerData) => {
+    votes[answerData.option] = (votes[answerData.option] || 0) + 1;
+    try {
+      await voteOnOption(answerData.pollId, answerData.option);
+    } catch (err) {}
+    io.emit("pollResults", votes);
   });
 
   socket.on("joinChat", ({ username }) => {
     if (!joinedUsers.has(socket.id)) {
-      console.log("User joining chat:", username, "with socket id:", socket.id);
       connectedUsers[socket.id] = username;
       joinedUsers.add(socket.id);
-      console.log("Updated connected users:", connectedUsers);
       io.emit("participantsUpdate", Object.values(connectedUsers));
-    } else {
-      console.log("User already joined:", username, "socket id:", socket.id);
     }
 
     socket.on("disconnect", () => {
-      console.log("User disconnecting:", username, "socket id:", socket.id);
       delete connectedUsers[socket.id];
       joinedUsers.delete(socket.id);
       io.emit("participantsUpdate", Object.values(connectedUsers));
     });
   });
 
-  socket.on("studentLogin", (name) => {
-    socket.emit("loginSuccess", { message: "Login successful", name });
+  socket.on("chatMessage", (message) => io.emit("chatMessage", message));
+
+  socket.on("kickOut", (userToKick) => {
+    for (let id in connectedUsers) {
+      if (connectedUsers[id] === userToKick) {
+        io.to(id).emit("kickedOut", { message: "You have been kicked out." });
+        const userSocket = io.sockets.sockets.get(id);
+        if (userSocket) userSocket.disconnect(true);
+        delete connectedUsers[id];
+        io.emit("participantsUpdate", Object.values(connectedUsers));
+        break;
+      }
+    }
   });
 
-  socket.on("chatMessage", (message) => {
-    io.emit("chatMessage", message);
-  });
-
-  socket.on("submitAnswer", (answerData) => {
-    votes[answerData.option] = (votes[answerData.option] || 0) + 1;
-    voteOnOption(answerData.pollId, answerData.option);
-    io.emit("pollResults", votes);
-  });
+  socket.on("studentLogin", (name) => socket.emit("loginSuccess", { message: "Login successful", name }));
 
   socket.on("disconnect", () => {
-    console.log("User disconnected:", socket.id);
+    delete connectedUsers[socket.id];
+    joinedUsers.delete(socket.id);
+    io.emit("participantsUpdate", Object.values(connectedUsers));
   });
 });
 
-app.get("/", (req, res) => {
-  res.send("Live Polling System Backend");
+app.get("/", (req, res) => res.send("Live Polling System Backend"));
+
+app.post("/teacher-login", (req, res) => TeacherLogin(req, res));
+
+app.get("/polls/:teacherUsername", async (req, res) => {
+  try {
+    await getPolls(req, res);
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch polls" });
+  }
 });
 
-app.post("/teacher-login", (req, res) => {
-  TeacherLogin(req, res);
-});
-
-app.get("/polls/:teacherUsername", (req, res) => {
-  getPolls(req, res);
-});
-
-server.listen(port, () => {
-  console.log(`Server running on port ${port}...`);
-});
+server.listen(port, () => console.log(`Server running on port ${port}...`));
