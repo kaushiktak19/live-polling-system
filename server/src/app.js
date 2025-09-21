@@ -9,15 +9,28 @@ const { createPoll, voteOnOption, getPolls } = require("../src/controllers/poll"
 
 const app = express();
 
-const FRONTEND_URL = process.env.FRONTEND_URL;
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://live-polling-system-kohl.vercel.app';
+
+console.log('Frontend URL:', FRONTEND_URL);
 
 app.use(cors({
   origin: FRONTEND_URL,
-  methods: ["GET", "POST"],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
 }));
 
 app.use(express.json());
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    frontendUrl: FRONTEND_URL,
+    origin: req.headers.origin 
+  });
+});
 
 const DB = process.env.MONGODB_URL;
 

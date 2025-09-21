@@ -1,11 +1,16 @@
 const Poll = require("../models/pollModel");
 
 exports.createPoll = async (pollData) => {
-  console.log("Creating poll with data:", pollData);
-  let newPoll = await Poll(pollData);
-  const savedPoll = await newPoll.save();
-  console.log("Poll saved to database:", savedPoll);
-  return savedPoll;
+  try {
+    console.log("Creating poll with data:", pollData);
+    let newPoll = new Poll(pollData);
+    const savedPoll = await newPoll.save();
+    console.log("Poll saved to database:", savedPoll);
+    return savedPoll;
+  } catch (error) {
+    console.error("Error creating poll:", error);
+    throw error;
+  }
 };
 
 exports.voteOnOption = async (pollId, optionText) => {
@@ -23,11 +28,25 @@ exports.voteOnOption = async (pollId, optionText) => {
 };
 
 exports.getPolls = async (req, res) => {
-  let { teacherUsername } = req.params;
-  console.log("Fetching polls for teacher:", teacherUsername);
-  let data = await Poll.find({ teacherUsername });
-  console.log("Found polls:", data);
-  res.status(200).json({
-    data,
-  });
+  try {
+    let { teacherUsername } = req.params;
+    console.log("Fetching polls for teacher:", teacherUsername);
+    
+    if (!teacherUsername) {
+      return res.status(400).json({ message: "Teacher username is required" });
+    }
+    
+    let data = await Poll.find({ teacherUsername });
+    console.log("Found polls:", data);
+    
+    res.status(200).json({
+      data,
+    });
+  } catch (error) {
+    console.error("Error fetching polls:", error);
+    res.status(500).json({ 
+      message: "Failed to fetch polls",
+      error: error.message 
+    });
+  }
 };
