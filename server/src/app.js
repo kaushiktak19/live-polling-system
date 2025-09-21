@@ -54,6 +54,10 @@ const io = new Server(server, {
     methods: ["GET", "POST"],
     credentials: true,
   },
+  pingTimeout: 60000,
+  pingInterval: 25000,
+  transports: ['websocket', 'polling'],
+  allowEIO3: true,
 });
 
 let votes = {};
@@ -61,12 +65,20 @@ let connectedUsers = {};
 let joinedUsers = new Set();
 
 io.on("connection", (socket) => {
+  console.log(`User connected: ${socket.id}`);
+  
+  // Handle connection errors
+  socket.on("connect_error", (error) => {
+    console.error("Socket connection error:", error);
+  });
+
   socket.on("createPoll", async (pollData) => {
     votes = {};
     try {
       const poll = await createPoll(pollData);
       io.emit("pollCreated", poll);
     } catch (err) {
+      console.error("Error creating poll:", err);
       socket.emit("error", { message: "Failed to create poll" });
     }
   });
@@ -75,45 +87,74 @@ io.on("connection", (socket) => {
     votes[answerData.option] = (votes[answerData.option] || 0) + 1;
     try {
       await voteOnOption(answerData.pollId, answerData.option);
-    } catch (err) {}
+    } catch (err) {
+      console.error("Error submitting vote:", err);
+    }
     io.emit("pollResults", votes);
   });
 
   socket.on("joinChat", ({ username }) => {
+    console.log(`User ${username} joining chat with socket ${socket.id}`);
+    
     if (!joinedUsers.has(socket.id)) {
       connectedUsers[socket.id] = username;
       joinedUsers.add(socket.id);
-      io.emit("participantsUpdate", Object.values(connectedUsers));
+      console.log(`Updated connected users:`, Object.values(connectedUsers));
+      
+      // Emit to all clients with a small delay to ensure connection is stable
+      setTimeout(() => {
+        io.emit("participantsUpdate", Object.values(connectedUsers));
+      }, 100);
+    } else {
+      console.log(`User ${username} already joined with socket ${socket.id}`);
     }
-
-    socket.on("disconnect", () => {
-      delete connectedUsers[socket.id];
-      joinedUsers.delete(socket.id);
-      io.emit("participantsUpdate", Object.values(connectedUsers));
-    });
   });
 
-  socket.on("chatMessage", (message) => io.emit("chatMessage", message));
+  socket.on("chatMessage", (message) => {
+    console.log(`Chat message from ${message.username}: ${message.text}`);
+    io.emit("chatMessage", message);
+  });
 
   socket.on("kickOut", (userToKick) => {
+    console.log(`Attempting to kick out user: ${userToKick}`);
     for (let id in connectedUsers) {
       if (connectedUsers[id] === userToKick) {
+        console.log(`Kicking out user ${userToKick} with socket ${id}`);
         io.to(id).emit("kickedOut", { message: "You have been kicked out." });
         const userSocket = io.sockets.sockets.get(id);
         if (userSocket) userSocket.disconnect(true);
         delete connectedUsers[id];
+        joinedUsers.delete(id);
         io.emit("participantsUpdate", Object.values(connectedUsers));
         break;
       }
     }
   });
 
-  socket.on("studentLogin", (name) => socket.emit("loginSuccess", { message: "Login successful", name }));
+  socket.on("studentLogin", (name) => {
+    console.log(`Student login: ${name}`);
+    socket.emit("loginSuccess", { message: "Login successful", name });
+  });
 
-  socket.on("disconnect", () => {
+  // Handle disconnection
+  socket.on("disconnect", (reason) => {
+    console.log(`User disconnected: ${socket.id}, reason: ${reason}`);
+    const username = connectedUsers[socket.id];
+    if (username) {
+      console.log(`Removing user ${username} from connected users`);
+    }
     delete connectedUsers[socket.id];
     joinedUsers.delete(socket.id);
-    io.emit("participantsUpdate", Object.values(connectedUsers));
+    
+    // Emit participants update with delay to ensure cleanup is complete
+    setTimeout(() => {
+      io.emit("participantsUpdate", Object.values(connectedUsers));
+    }, 100);
+  });
+
+  // Handle reconnection
+  socket.on("reconnect", (attemptNumber) => {
+    console.log(`User reconnected: ${socket.id}, attempt: ${attemptNumber}`);
   });
 });
 
